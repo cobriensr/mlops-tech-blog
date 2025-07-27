@@ -13,9 +13,13 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# Next.js
+.next/
+out/
+.env.local
+
+# Build cache
+.next/cache/
 
 # production
 /build
