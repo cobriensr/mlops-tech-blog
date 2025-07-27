@@ -180,7 +180,7 @@ jobs:
     
     - name: Run TruffleHog
       if: steps.check_trufflehog.outputs.should_run == 'true'
-      uses: trufflesecurity/trufflehog@v3.81.9
+      uses: trufflesecurity/trufflehog@v3.90.2
       with:
         path: ./
         base: ${{ github.event.repository.default_branch }}
