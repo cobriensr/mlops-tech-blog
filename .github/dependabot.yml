@@ -1,0 +1,53 @@
+version: 2
+updates:
+# NPM updates for blog
+- package-ecosystem: "npm"
+  directory: "/mlops-blog"
+  schedule:
+    interval: "weekly"
+    day: "monday"
+  open-pull-requests-limit: 5
+  groups:
+    dependencies:
+      patterns:
+      - "*"
+  commit-message:
+    prefix: "npm"
+    include: "scope"
+  labels:
+  - "dependencies"
+  - "npm"
+  reviewers:
+  - "cobriensr" # Replace with your GitHub username
+
+# Terraform provider updates
+- package-ecosystem: "terraform"
+  directory: "/terraform"
+  schedule:
+    interval: "weekly"
+    day: "monday"
+  open-pull-requests-limit: 3
+  commit-message:
+    prefix: "terraform"
+    include: "scope"
+  labels:
+  - "dependencies"
+  - "terraform"
+  reviewers:
+  - "cobriensr" # Replace with your GitHub username
+
+# GitHub Actions updates
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+    day: "monday"
+  open-pull-requests-limit: 3
+  commit-message:
+    prefix: "ci"
+    include: "scope"
+  labels:
+  - "dependencies"
+  - "github-actions"
+  reviewers:
+  - "cobriensr" # Replace with your GitHub username
