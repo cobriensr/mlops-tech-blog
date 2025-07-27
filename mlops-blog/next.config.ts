@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
   images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
     unoptimized: true,
   },
   // Strict mode for better development experience
