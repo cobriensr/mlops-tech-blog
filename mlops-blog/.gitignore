@@ -39,3 +39,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+.tfbackend
+
+# Variable files with secrets
+*.auto.tfvars
+terraform.tfvars
+
+# Backup files
+*.backup
+*.bak
+
+# Output files
+outputs.json
+
+# log files
+*.log
