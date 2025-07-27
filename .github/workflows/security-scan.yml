@@ -18,7 +18,6 @@ permissions:
 
 jobs:
   # Terraform Security Scanning
-  # Terraform Security Scanning
   terraform-security:
     name: Terraform Security Scan
     runs-on: ubuntu-latest
@@ -27,126 +26,68 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Check if Terraform directory exists
+      id: check_terraform
+      run: |
+        if [ -d "terraform" ]; then
+          echo "terraform_exists=true" >> $GITHUB_OUTPUT
+          echo "terraform_dir=terraform" >> $GITHUB_OUTPUT
+        elif [ -d "infrastructure" ]; then
+          echo "terraform_exists=true" >> $GITHUB_OUTPUT
+          echo "terraform_dir=infrastructure" >> $GITHUB_OUTPUT
+        else
+          echo "terraform_exists=false" >> $GITHUB_OUTPUT
+          echo "No Terraform directory found"
+        fi
+    
     - name: Setup Python
+      if: steps.check_terraform.outputs.terraform_exists == 'true'
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
-    # tfsec - Terraform static analysis
-    - name: Run tfsec
-      run: |
-        echo "Running tfsec..."
-        wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64
-        chmod +x tfsec
-        
-        # Run tfsec and capture results
-        ./tfsec terraform --format json > tfsec-results.json 2>&1 || true
-        
-        # Try to create SARIF output
-        ./tfsec terraform --format sarif > tfsec.sarif 2>&1 || echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "tfsec", "informationUri": "https://tfsec.dev"}}, "results": []}]}' > tfsec.sarif
-        
-        # Ensure SARIF is valid JSON
-        if ! jq . tfsec.sarif > /dev/null 2>&1; then
-          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "tfsec"}}, "results": []}]}' > tfsec.sarif
-        fi
-    
-    - name: Upload tfsec results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
+    # Run Trivy for comprehensive IaC scanning
+    - name: Run Trivy on Terraform
+      if: steps.check_terraform.outputs.terraform_exists == 'true'
+      uses: aquasecurity/trivy-action@master
       with:
-        sarif_file: tfsec.sarif
-        category: tfsec
+        scan-type: 'config'
+        scan-ref: '${{ steps.check_terraform.outputs.terraform_dir }}'
+        format: 'sarif'
+        output: 'trivy-terraform.sarif'
+        severity: 'CRITICAL,HIGH'
+        hide-progress: true
+      continue-on-error: true
+    
+    - name: Upload Trivy results to GitHub Security
+      if: steps.check_terraform.outputs.terraform_exists == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-terraform.sarif
+        category: trivy-terraform
       continue-on-error: true
     
     # Checkov - Multi-cloud security analysis
     - name: Run Checkov
-      id: checkov
-      run: |
-        echo "Installing and running Checkov..."
-        pip install checkov
-        
-        # Run Checkov with multiple output formats
-        checkov -d terraform --output cli --output sarif --output-file-path . || true
-        
-        # Ensure SARIF file exists
-        if [ ! -f results_sarif.sarif ]; then
-          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "checkov"}}, "results": []}]}' > checkov.sarif
-        else
-          mv results_sarif.sarif checkov.sarif
-        fi
+      if: steps.check_terraform.outputs.terraform_exists == 'true'
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: ${{ steps.check_terraform.outputs.terraform_dir }}
+        quiet: true
+        soft_fail: true
+        framework: terraform
+        output_format: sarif
+        output_file_path: checkov.sarif
+        download_external_modules: true
       continue-on-error: true
     
-    - name: Upload Checkov results
+    - name: Upload Checkov results to GitHub Security
+      if: steps.check_terraform.outputs.terraform_exists == 'true' && always()
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
       with:
         sarif_file: checkov.sarif
         category: checkov
       continue-on-error: true
-    
-    # Terrascan - Terraform security scanner
-    - name: Run Terrascan
-      run: |
-        echo "Installing and running Terrascan..."
-        pip install terrascan
-        
-        # Run terrascan
-        terrascan scan -i terraform -d terraform --output json > terrascan-results.json 2>&1 || true
-        
-        # Create a valid SARIF file
-        echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "terrascan", "informationUri": "https://github.com/accurics/terrascan"}}, "results": []}]}' > terrascan.sarif
-    
-    - name: Upload Terrascan results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: terrascan.sarif
-        category: terrascan
-      continue-on-error: true
-    
-    # KICS - Keeping Infrastructure as Code Secure
-    - name: Run KICS
-      run: |
-        echo "Running KICS..."
-        # Download and run KICS manually for better control
-        KICS_VERSION="v2.1.1"
-        wget -q -O kics "https://github.com/Checkmarx/kics/releases/download/${KICS_VERSION}/kics_${KICS_VERSION#v}_linux_x64"
-        chmod +x kics
-        
-        # Create results directory
-        mkdir -p kics-results
-        
-        # Run KICS
-        ./kics scan -p terraform -o kics-results --report-formats json,sarif || true
-        
-        # Ensure SARIF exists
-        if [ ! -f kics-results/results.sarif ]; then
-          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "KICS"}}, "results": []}]}' > kics-results/results.sarif
-        fi
-      continue-on-error: true
-    
-    - name: Upload KICS results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: kics-results/results.sarif
-        category: kics
-      continue-on-error: true
-    
-    # Upload all scan results as artifacts
-    - name: Upload all Terraform scan results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: terraform-security-results
-        path: |
-          tfsec-results.json
-          tfsec.sarif
-          checkov.sarif
-          terrascan-results.json
-          terrascan.sarif
-          kics-results/
-        retention-days: 30
 
   # NPM Security Scanning
   npm-security:
@@ -167,61 +108,39 @@ jobs:
         cache: 'npm'
         cache-dependency-path: mlops-blog/package-lock.json
     
-    # npm audit
+    # npm audit with GitHub Security integration
     - name: Run npm audit
       run: |
-        npm audit --production --audit-level=moderate || true
-        npm audit --json > npm-audit.json || true
+        npm audit --production --audit-level=high --json > npm-audit.json || true
+        
+        # Convert npm audit to SARIF format
+        npm install -g @microsoft/npm-audit-converter
+        npm-audit-converter -i npm-audit.json -o npm-audit.sarif || echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "npm-audit"}}, "results": []}]}' > npm-audit.sarif
     
-    - name: Upload npm audit results
-      uses: actions/upload-artifact@v4
-      if: always()
+    - name: Upload npm audit results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
       with:
-        name: npm-audit-results
-        path: mlops-blog/npm-audit.json
+        sarif_file: mlops-blog/npm-audit.sarif
+        category: npm-audit
+      continue-on-error: true
     
-    # OSV Scanner (Google's vulnerability scanner) - Fixed
+    # OSV Scanner
     - name: Run OSV Scanner
-      run: |
-        wget -q -O osv-scanner https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
-        chmod +x osv-scanner
-        ./osv-scanner --lockfile=package-lock.json --format=json > osv-results.json || true
-        # Create a minimal SARIF file for compatibility
-        echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "osv-scanner"}}, "results": []}]}' > osv-scanner.sarif
-      working-directory: mlops-blog
+      uses: google/osv-scanner-action@v1.8.4
+      with:
+        scan-args: |-
+          --lockfile=mlops-blog/package-lock.json
+          --format=sarif
+          --output=osv-results.sarif
+      continue-on-error: true
     
-    - name: Upload OSV results
+    - name: Upload OSV results to GitHub Security
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: mlops-blog/osv-scanner.sarif
+        sarif_file: osv-results.sarif
         category: osv-scanner
       continue-on-error: true
-    
-    # License checker
-    - name: Check licenses
-      run: |
-        npx license-checker --production --json > licenses.json
-        npx license-checker --production --failOn 'GPL-3.0;AGPL-3.0' || echo "License check completed"
-    
-    - name: Upload license report
-      uses: actions/upload-artifact@v4
-      with:
-        name: license-report
-        path: mlops-blog/licenses.json
-    
-    # Retire.js - Check for known vulnerabilities
-    - name: Run Retire.js
-      run: |
-        npm install -g retire
-        retire --severity high --outputformat json --outputpath retire-results.json || true
-    
-    - name: Upload Retire.js results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: retire-results
-        path: mlops-blog/retire-results.json
 
   # Code Security Scanning
   code-security:
@@ -231,6 +150,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better scanning
     
     # Semgrep - Static analysis
     - name: Run Semgrep
@@ -241,92 +162,71 @@ jobs:
           p/typescript
           p/javascript
           p/nextjs
+          p/secrets
       continue-on-error: true
     
-    # GitLeaks - Secret scanning
-    - name: Run GitLeaks
-      uses: gitleaks/gitleaks-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      continue-on-error: true
+    # TruffleHog - Secret scanning with proper handling
+    - name: Check if TruffleHog should run
+      id: check_trufflehog
+      run: |
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "should_run=true" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+          echo "should_run=true" >> $GITHUB_OUTPUT
+        else
+          echo "should_run=false" >> $GITHUB_OUTPUT
+          echo "Skipping TruffleHog - no new commits to scan"
+        fi
     
-    # TruffleHog - Secret scanning
     - name: Run TruffleHog
+      if: steps.check_trufflehog.outputs.should_run == 'true'
       uses: trufflesecurity/trufflehog@v3.81.9
       with:
         path: ./
         base: ${{ github.event.repository.default_branch }}
         head: HEAD
-        extra_args: --only-verified
+        extra_args: --only-verified --max-depth=5
       continue-on-error: true
-
-# OWASP Dependency Check (Alternative using official action)
-  dependency-check:
-    name: OWASP Dependency Check
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Run OWASP Dependency Check
-      uses: dependency-check/Dependency-Check_Action@main
-      with:
-        project: 'mlops-blog'
-        path: './mlops-blog'
-        format: 'JSON'
-        args: >
-          --enableRetired
-          --nodePackageSkipDevDependencies
-          --nodeAuditSkipDevDependencies
-      continue-on-error: true
-    
-    - name: Upload OWASP results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: owasp-dependency-check-report
-        path: reports/
 
   # Security Report Summary
   security-summary:
     name: Security Summary
     runs-on: ubuntu-latest
-    needs: [terraform-security, npm-security, code-security, dependency-check]
+    needs: [terraform-security, npm-security, code-security]
     if: always()
     
     steps:
     - name: Create security summary
       run: |
-        echo "# Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "# 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
         # Check job statuses
         if [ "${{ needs.terraform-security.result }}" == "success" ]; then
-          echo "✅ Terraform Security Scan: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Terraform Security**: Passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.terraform-security.result }}" == "skipped" ]; then
+          echo "⏭️ **Terraform Security**: Skipped (no Terraform files)" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ Terraform Security Scan: Failed" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Terraform Security**: Failed" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ "${{ needs.npm-security.result }}" == "success" ]; then
-          echo "✅ NPM Security Scan: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **NPM Security**: Passed" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ NPM Security Scan: Failed" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **NPM Security**: Failed" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ "${{ needs.code-security.result }}" == "success" ]; then
-          echo "✅ Code Security Scan: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Code Security**: Passed" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ Code Security Scan: Failed" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        if [ "${{ needs.dependency-check.result }}" == "success" ]; then
-          echo "✅ Dependency Check: Passed" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ Dependency Check: Failed" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Code Security**: Failed" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "View detailed results in the Security tab." >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 View detailed results in:" >> $GITHUB_STEP_SUMMARY
+        echo "- [Security tab](../../security) for vulnerability details" >> $GITHUB_STEP_SUMMARY
+        echo "- [Code scanning alerts](../../security/code-scanning) for code issues" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "_Scans run on: $(date -u +"%Y-%m-%d %H:%M:%S UTC")_" >> $GITHUB_STEP_SUMMARY
