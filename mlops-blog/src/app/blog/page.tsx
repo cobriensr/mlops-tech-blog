@@ -2,11 +2,7 @@
 import { getAllPosts } from '@/lib/posts'
 import BlogFilters from '@/components/blog-filters'
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ search?: string; tag?: string }>
-}) {
+export default function BlogPage() {
   const posts = getAllPosts()
   
   // Get all unique tags
@@ -27,7 +23,7 @@ export default async function BlogPage({
       </div>
 
       {/* Filters and Search - Client Component */}
-      <BlogFilters posts={posts} allTags={allTags} searchParams={searchParams} />
+      <BlogFilters posts={posts} allTags={allTags} />
     </div>
   )
 }
