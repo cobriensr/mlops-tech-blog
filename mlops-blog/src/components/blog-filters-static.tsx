@@ -1,9 +1,8 @@
-// src/components/blog-filters.tsx
+// src/components/blog-filters-static.tsx
 'use client'
 
 import Link from 'next/link'
 import { useState, useMemo } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Post } from '@/lib/posts'
 
 interface BlogFiltersProps {
@@ -11,37 +10,9 @@ interface BlogFiltersProps {
   allTags: string[]
 }
 
-export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  
-  // Initialize state from URL params
-  const initialSearch = searchParams.get('search') || ''
-  const initialTag = searchParams.get('tag') || null
-  
-  const [searchQuery, setSearchQuery] = useState(initialSearch)
-  const [selectedTag, setSelectedTag] = useState<string | null>(initialTag)
-
-  // Update URL when filters change
-  const updateURL = (search: string, tag: string | null) => {
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (tag) params.set('tag', tag)
-    
-    const queryString = params.toString()
-    router.push(`${pathname}${queryString ? `?${queryString}` : ''}`)
-  }
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value)
-    updateURL(value, selectedTag)
-  }
-
-  const handleTagChange = (tag: string | null) => {
-    setSelectedTag(tag)
-    updateURL(searchQuery, tag)
-  }
+export default function BlogFiltersStatic({ posts, allTags }: BlogFiltersProps) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
 
   // Filter posts based on search and selected tag
   const filteredPosts = useMemo(() => {
@@ -82,7 +53,7 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
                   type="text"
                   placeholder="Search posts..."
                   value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
@@ -92,7 +63,7 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
             <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
               <span className="text-sm text-gray-400 whitespace-nowrap">Filter by:</span>
               <button
-                onClick={() => handleTagChange(null)}
+                onClick={() => setSelectedTag(null)}
                 className={`px-3 py-1 text-sm rounded-full transition-all whitespace-nowrap ${
                   !selectedTag
                     ? 'bg-blue-500 text-white'
@@ -104,7 +75,7 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
               {allTags.map(tag => (
                 <button
                   key={tag}
-                  onClick={() => handleTagChange(tag === selectedTag ? null : tag)}
+                  onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
                   className={`px-3 py-1 text-sm rounded-full transition-all whitespace-nowrap ${
                     tag === selectedTag
                       ? 'bg-blue-500 text-white'
@@ -146,7 +117,6 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
                 onClick={() => {
                   setSearchQuery('')
                   setSelectedTag(null)
-                  updateURL('', null)
                 }}
                 className="mt-4 text-blue-400 hover:text-blue-300 transition-colors"
               >
@@ -165,7 +135,6 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
                   onClick={() => {
                     setSearchQuery('')
                     setSelectedTag(null)
-                    updateURL('', null)
                   }}
                   className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
                 >
@@ -181,7 +150,7 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
                   className="group animate-in"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <Link href={`/blog/${post.slug}`}>
+                  <Link href={`/blog/${post.slug}/`}>
                     <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800 hover:border-gray-700 transition-all duration-300 card-hover">
                       <div className="p-6 sm:p-8">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -227,21 +196,6 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
                 </article>
               ))}
             </div>
-
-            {/* Pagination (placeholder for future implementation) */}
-            {posts.length > 10 && (
-              <div className="mt-12 flex justify-center">
-                <nav className="flex items-center gap-2">
-                  <button className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors">
-                    Previous
-                  </button>
-                  <span className="px-4 py-1 text-gray-400">Page 1 of 1</span>
-                  <button className="px-3 py-1 bg-gray-800 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors">
-                    Next
-                  </button>
-                </nav>
-              </div>
-            )}
           </>
         )}
       </div>
