@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
 
-export default async function Home() {
+export default function Home() {
   const recentPosts = getAllPosts().slice(0, 3)
   const featuredPost = recentPosts[0] // Assuming first post is featured
 
