@@ -27,11 +27,8 @@ export default function Home() {
 
             {/* Heading */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-              <span className="block">
-                Master{' '}
-                <span className="gradient-text whitespace-nowrap">Production MLOps</span>
-              </span>
-              <span className="block mt-2">Engineering</span>
+              <span className="block gradient-text pb-2">Practical MLOps for</span>
+              <span className="block gradient-text">Production Systems</span>
             </h1>
 
             {/* Subheading */}
