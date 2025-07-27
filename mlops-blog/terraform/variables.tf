@@ -20,3 +20,9 @@ variable "redirect_domain_name" {
   type        = string
   default     = ""
 }
+
+variable "github_repository" {
+  description = "GitHub repository in format 'username/repo'"
+  type        = string
+  default     = "cobriensr/mlops-tech-blog"
+}

@@ -5,12 +5,15 @@ on:
   push:
     branches: [main]
 
-env:
-  AWS_REGION: us-east-1
+# Add these permissions for OIDC
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
     - uses: actions/checkout@v4
@@ -27,15 +30,18 @@ jobs:
     - name: Build Next.js site
       run: npm run build
     
+    # UPDATED: Use OIDC instead of access keys
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+        role-session-name: github-actions-deploy
+        aws-region: ${{ vars.AWS_REGION }}
     
     - name: Sync to S3
       run: |
+        set -e  # Exit on any error
+        echo "Syncing static assets..."
         aws s3 sync ./out s3://${{ vars.S3_BUCKET_NAME }} \
           --delete \
           --cache-control "public, max-age=31536000" \
@@ -43,7 +49,7 @@ jobs:
           --exclude "*.xml" \
           --exclude "*.json"
         
-        # HTML files get shorter cache
+        echo "Syncing dynamic content..."
         aws s3 sync ./out s3://${{ vars.S3_BUCKET_NAME }} \
           --delete \
           --cache-control "public, max-age=0, must-revalidate" \
@@ -57,3 +63,8 @@ jobs:
         aws cloudfront create-invalidation \
           --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
           --paths "/*"
+    - name: Validate deployment
+      run: |
+        # Check if S3 sync was successful
+        aws s3 ls s3://${{ vars.S3_BUCKET_NAME }}/ --recursive | head -5
+        echo "✅ S3 deployment validated"

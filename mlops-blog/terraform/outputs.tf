@@ -27,3 +27,9 @@ output "redirect_nameservers" {
   value       = aws_route53_zone.redirect.name_servers
   description = "Nameservers for redirect domain"
 }
+
+# Output the role ARN for use in GitHub Actions
+output "github_actions_role_arn" {
+  value       = aws_iam_role.github_actions.arn
+  description = "ARN of the IAM role for GitHub Actions OIDC"
+}
