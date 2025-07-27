@@ -1,0 +1,29 @@
+# .gitleaks.toml
+title = "Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlisted files and paths"
+paths = [
+  '''\.lock$''',
+  '''\.sum$''',
+  '''node_modules''',
+  '''vendor''',
+  '''.next''',
+  '''out''',
+  '''dist''',
+  '''build''',
+  '''terraform/.terraform'''
+]
+
+# Add patterns to ignore common false positives
+[[rules]]
+id = "ignore-localhost"
+description = "Ignore localhost URLs"
+regex = '''(?i)(localhost|127\.0\.0\.1)'''
+[rules.allowlist]
+regexes = [
+  '''.*'''
+]
