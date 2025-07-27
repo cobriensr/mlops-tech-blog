@@ -5,12 +5,6 @@ import { getAllPosts, getPostBySlug } from '@/lib/posts'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import { mdxComponents } from '@/components/mdx-components'
 
-// Helper function to handle params
-async function getSlug(params: { slug: string } | Promise<{ slug: string }>): Promise<string> {
-  const resolvedParams = 'slug' in params ? params : await params
-  return resolvedParams.slug
-}
-
 export async function generateStaticParams() {
   const posts = getAllPosts()
   return posts.map((post) => ({
@@ -21,9 +15,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params
 }: {
-  params: { slug: string } | Promise<{ slug: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const slug = await getSlug(params)
+  const { slug } = await params
   const post = getPostBySlug(slug)
 
   if (!post) return {}
@@ -49,9 +43,9 @@ export async function generateMetadata({
 export default async function BlogPost({
   params
 }: {
-  params: { slug: string } | Promise<{ slug: string }>
+  params: Promise<{ slug: string }>
 }) {
-  const slug = await getSlug(params)
+  const { slug } = await params
   const post = getPostBySlug(slug)
 
   if (!post) {
