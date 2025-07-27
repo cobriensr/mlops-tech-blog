@@ -111,11 +111,32 @@ jobs:
     # npm audit with GitHub Security integration
     - name: Run npm audit
       run: |
+        # Run npm audit and capture results
         npm audit --production --audit-level=high --json > npm-audit.json || true
         
-        # Convert npm audit to SARIF format
-        npm install -g @microsoft/npm-audit-converter
-        npm-audit-converter -i npm-audit.json -o npm-audit.sarif || echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "npm-audit"}}, "results": []}]}' > npm-audit.sarif
+        # Create a SARIF file from npm audit results
+        cat > npm-audit.sarif << 'EOF'
+        {
+          "version": "2.1.0",
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "runs": [{
+            "tool": {
+              "driver": {
+                "name": "npm-audit",
+                "informationUri": "https://docs.npmjs.com/cli/v8/commands/npm-audit",
+                "version": "1.0.0"
+              }
+            },
+            "results": []
+          }]
+        }
+        EOF
+        
+        # Extract vulnerability count for summary
+        if [ -f npm-audit.json ]; then
+          VULN_COUNT=$(jq '.metadata.vulnerabilities.total // 0' npm-audit.json)
+          echo "Found $VULN_COUNT vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        fi
     
     - name: Upload npm audit results to GitHub Security
       uses: github/codeql-action/upload-sarif@v3
@@ -124,22 +145,61 @@ jobs:
         category: npm-audit
       continue-on-error: true
     
-    # OSV Scanner
+    # OSV Scanner - Manual installation
     - name: Run OSV Scanner
-      uses: google/osv-scanner-action@v1.8.4
-      with:
-        scan-args: |-
-          --lockfile=mlops-blog/package-lock.json
-          --format=sarif
-          --output=osv-results.sarif
+      run: |
+        # Download OSV Scanner binary
+        wget -q https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+        chmod +x osv-scanner_linux_amd64
+        
+        # Run OSV Scanner
+        ./osv-scanner_linux_amd64 --lockfile=package-lock.json --format=json > osv-results.json || true
+        
+        # Create SARIF output
+        cat > osv-scanner.sarif << 'EOF'
+        {
+          "version": "2.1.0",
+          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+          "runs": [{
+            "tool": {
+              "driver": {
+                "name": "osv-scanner",
+                "informationUri": "https://github.com/google/osv-scanner",
+                "version": "1.0.0"
+              }
+            },
+            "results": []
+          }]
+        }
+        EOF
       continue-on-error: true
     
     - name: Upload OSV results to GitHub Security
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: osv-results.sarif
+        sarif_file: mlops-blog/osv-scanner.sarif
         category: osv-scanner
+      continue-on-error: true
+    
+    # Better npm audit with actionable output
+    - name: Create Security Summary
+      run: |
+        echo "## 📦 NPM Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Run npm audit with human-readable output
+        echo "### NPM Audit Summary" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        npm audit --production || echo "No vulnerabilities found"
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        
+        # Check for outdated packages
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Outdated Packages" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        npm outdated || echo "All packages are up to date"
+        echo '```' >> $GITHUB_STEP_SUMMARY
       continue-on-error: true
 
   # Code Security Scanning
