@@ -45,8 +45,8 @@ export default async function BlogPost({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
-  const post = getPostBySlug(slug)
+  const resolvedParams = await params
+  const post = getPostBySlug(resolvedParams.slug)
 
   if (!post) {
     notFound()
@@ -101,13 +101,12 @@ export default async function BlogPost({
           {post.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag) => (
-                <Link
+                <span
                   key={tag}
-                  href={`/blog?tag=${tag}`}
                   className="tag"
                 >
                   {tag}
-                </Link>
+                </span>
               ))}
             </div>
           )}
