@@ -2,7 +2,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Post } from '@/lib/posts'
 
@@ -16,16 +16,12 @@ export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTag, setSelectedTag] = useState<string | null>(null)
-
-  // Initialize from URL params
-  useEffect(() => {
-    const search = searchParams.get('search') || ''
-    const tag = searchParams.get('tag') || null
-    setSearchQuery(search)
-    setSelectedTag(tag)
-  }, [searchParams])
+  // Initialize state from URL params
+  const initialSearch = searchParams.get('search') || ''
+  const initialTag = searchParams.get('tag') || null
+  
+  const [searchQuery, setSearchQuery] = useState(initialSearch)
+  const [selectedTag, setSelectedTag] = useState<string | null>(initialTag)
 
   // Update URL when filters change
   const updateURL = (search: string, tag: string | null) => {
