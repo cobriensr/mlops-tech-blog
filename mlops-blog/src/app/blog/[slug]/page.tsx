@@ -67,7 +67,7 @@ export default async function BlogPost({
           <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-8">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
             <span>/</span>
-            <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
+            <Link href="/blog/" className="hover:text-white transition-colors">Blog</Link>
             <span>/</span>
             <span className="text-white truncate max-w-xs">{post.title}</span>
           </nav>
