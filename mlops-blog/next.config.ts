@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Strict mode for better development experience
+  reactStrictMode: true,
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 }
 
