@@ -17,18 +17,22 @@ export interface Post {
 }
 
 export function getAllPosts(): Post[] {
+  // Create directory if it doesn't exist
   if (!fs.existsSync(postsDirectory)) {
+    fs.mkdirSync(postsDirectory, { recursive: true })
     return []
   }
 
   const fileNames = fs.readdirSync(postsDirectory)
   const posts = fileNames
-    .filter((fileName) => fileName.endsWith('.mdx'))
+    .filter((fileName) => fileName.endsWith('.mdx') || fileName.endsWith('.md'))
     .map((fileName) => {
-      const slug = fileName.replace(/\.mdx$/, '')
+      const slug = fileName.replace(/\.(mdx|md)$/, '')
       const fullPath = path.join(postsDirectory, fileName)
       const fileContents = fs.readFileSync(fullPath, 'utf8')
       const { data, content } = matter(fileContents)
+      
+      const stats = readingTime(content)
 
       return {
         slug,
@@ -37,7 +41,7 @@ export function getAllPosts(): Post[] {
         date: data.date || new Date().toISOString(),
         excerpt: data.excerpt || '',
         tags: data.tags || [],
-        readingTime: readingTime(content).text,
+        readingTime: stats.text,
       }
     })
     .sort((a, b) => (a.date > b.date ? -1 : 1))
@@ -47,9 +51,16 @@ export function getAllPosts(): Post[] {
 
 export function getPostBySlug(slug: string): Post | null {
   try {
-    const fullPath = path.join(postsDirectory, `${slug}.mdx`)
+    // Try both .mdx and .md extensions
+    let fullPath = path.join(postsDirectory, `${slug}.mdx`)
+    if (!fs.existsSync(fullPath)) {
+      fullPath = path.join(postsDirectory, `${slug}.md`)
+    }
+    
     const fileContents = fs.readFileSync(fullPath, 'utf8')
     const { data, content } = matter(fileContents)
+    
+    const stats = readingTime(content)
 
     return {
       slug,
@@ -58,7 +69,7 @@ export function getPostBySlug(slug: string): Post | null {
       date: data.date || new Date().toISOString(),
       excerpt: data.excerpt || '',
       tags: data.tags || [],
-      readingTime: readingTime(content).text,
+      readingTime: stats.text,
     }
   } catch {
     return null
