@@ -26,10 +26,12 @@ export default function Home() {
             </div>
 
             {/* Heading */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
-              Master <span className="gradient-text inline-block">Production MLOps</span>
-              <br />
-              Engineering
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+              <span className="block">
+                Master{' '}
+                <span className="gradient-text whitespace-nowrap">Production MLOps</span>
+              </span>
+              <span className="block mt-2">Engineering</span>
             </h1>
 
             {/* Subheading */}
