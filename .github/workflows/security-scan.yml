@@ -29,15 +29,24 @@ jobs:
     - name: Check if Terraform directory exists
       id: check_terraform
       run: |
+        # Check for terraform directory - adjust path as needed
         if [ -d "terraform" ]; then
           echo "terraform_exists=true" >> $GITHUB_OUTPUT
           echo "terraform_dir=terraform" >> $GITHUB_OUTPUT
+          echo "Found Terraform directory at: terraform"
+        elif [ -d "mlops-blog/terraform" ]; then
+          echo "terraform_exists=true" >> $GITHUB_OUTPUT
+          echo "terraform_dir=mlops-blog/terraform" >> $GITHUB_OUTPUT
+          echo "Found Terraform directory at: mlops-blog/terraform"
         elif [ -d "infrastructure" ]; then
           echo "terraform_exists=true" >> $GITHUB_OUTPUT
           echo "terraform_dir=infrastructure" >> $GITHUB_OUTPUT
+          echo "Found Terraform directory at: infrastructure"
         else
           echo "terraform_exists=false" >> $GITHUB_OUTPUT
           echo "No Terraform directory found"
+          echo "Checked: terraform, mlops-blog/terraform, infrastructure"
+          ls -la
         fi
     
     - name: Setup Python
@@ -93,9 +102,6 @@ jobs:
   npm-security:
     name: NPM Security Scan
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mlops-blog
     
     steps:
     - name: Checkout code
@@ -108,98 +114,47 @@ jobs:
         cache: 'npm'
         cache-dependency-path: mlops-blog/package-lock.json
     
-    # npm audit with GitHub Security integration
+    # Use built-in npm audit
     - name: Run npm audit
+      working-directory: mlops-blog
       run: |
-        # Run npm audit and capture results
-        npm audit --production --audit-level=high --json > npm-audit.json || true
+        echo "## 📦 NPM Security Scan" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         
-        # Create a SARIF file from npm audit results
-        cat > npm-audit.sarif << 'EOF'
-        {
-          "version": "2.1.0",
-          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-          "runs": [{
-            "tool": {
-              "driver": {
-                "name": "npm-audit",
-                "informationUri": "https://docs.npmjs.com/cli/v8/commands/npm-audit",
-                "version": "1.0.0"
-              }
-            },
-            "results": []
-          }]
-        }
-        EOF
+        # Check for vulnerabilities
+        echo "### Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        npm audit --production || true
+        echo '```' >> $GITHUB_STEP_SUMMARY
         
-        # Extract vulnerability count for summary
-        if [ -f npm-audit.json ]; then
-          VULN_COUNT=$(jq '.metadata.vulnerabilities.total // 0' npm-audit.json)
-          echo "Found $VULN_COUNT vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        # Report status
+        if npm audit --production --audit-level=high; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status**: No high or critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Status**: Vulnerabilities detected - review needed" >> $GITHUB_STEP_SUMMARY
         fi
+      continue-on-error: true
     
-    - name: Upload npm audit results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
+    # Use Trivy for comprehensive scanning
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
       with:
-        sarif_file: mlops-blog/npm-audit.sarif
-        category: npm-audit
+        scan-type: 'fs'
+        scan-ref: 'mlops-blog'
+        format: 'sarif'
+        output: 'trivy-npm.sarif'
+        severity: 'CRITICAL,HIGH'
+        skip-dirs: 'node_modules,.next,out'
       continue-on-error: true
     
-    # OSV Scanner - Manual installation
-    - name: Run OSV Scanner
-      run: |
-        # Download OSV Scanner binary
-        wget -q https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
-        chmod +x osv-scanner_linux_amd64
-        
-        # Run OSV Scanner
-        ./osv-scanner_linux_amd64 --lockfile=package-lock.json --format=json > osv-results.json || true
-        
-        # Create SARIF output
-        cat > osv-scanner.sarif << 'EOF'
-        {
-          "version": "2.1.0",
-          "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-          "runs": [{
-            "tool": {
-              "driver": {
-                "name": "osv-scanner",
-                "informationUri": "https://github.com/google/osv-scanner",
-                "version": "1.0.0"
-              }
-            },
-            "results": []
-          }]
-        }
-        EOF
-      continue-on-error: true
-    
-    - name: Upload OSV results to GitHub Security
+    - name: Upload Trivy results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
-        sarif_file: mlops-blog/osv-scanner.sarif
-        category: osv-scanner
-      continue-on-error: true
-    
-    # Better npm audit with actionable output
-    - name: Create Security Summary
-      run: |
-        echo "## 📦 NPM Security Scan Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        # Run npm audit with human-readable output
-        echo "### NPM Audit Summary" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        npm audit --production || echo "No vulnerabilities found"
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        
-        # Check for outdated packages
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Outdated Packages" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        npm outdated || echo "All packages are up to date"
-        echo '```' >> $GITHUB_STEP_SUMMARY
+        sarif_file: trivy-npm.sarif
+        category: trivy-npm
       continue-on-error: true
 
   # Code Security Scanning
@@ -225,27 +180,18 @@ jobs:
           p/secrets
       continue-on-error: true
     
-    # TruffleHog - Secret scanning with proper handling
-    - name: Check if TruffleHog should run
-      id: check_trufflehog
+    # Simple secret detection with built-in git
+    - name: Check for secrets with git
       run: |
-        if [ "${{ github.event_name }}" == "pull_request" ]; then
-          echo "should_run=true" >> $GITHUB_OUTPUT
-        elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
-          echo "should_run=true" >> $GITHUB_OUTPUT
+        echo "## 🔐 Secret Detection" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Check for common secret patterns
+        if git grep -iE "(api[_-]?key|api[_-]?secret|access[_-]?key|private[_-]?key|secret[_-]?key)" -- ':!*.md' ':!*.lock' ':!*.json' ':!.github/*' 2>/dev/null; then
+          echo "⚠️ **Warning**: Potential secrets detected in code" >> $GITHUB_STEP_SUMMARY
         else
-          echo "should_run=false" >> $GITHUB_OUTPUT
-          echo "Skipping TruffleHog - no new commits to scan"
+          echo "✅ **Status**: No obvious secrets detected" >> $GITHUB_STEP_SUMMARY
         fi
-    
-    - name: Run TruffleHog
-      if: steps.check_trufflehog.outputs.should_run == 'true'
-      uses: trufflesecurity/trufflehog@v3.90.2
-      with:
-        path: ./
-        base: ${{ github.event.repository.default_branch }}
-        head: HEAD
-        extra_args: --only-verified --max-depth=5
       continue-on-error: true
 
   # Security Report Summary
