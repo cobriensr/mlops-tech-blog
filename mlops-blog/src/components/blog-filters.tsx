@@ -3,33 +3,29 @@
 
 import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Post } from '@/lib/posts'
 
 interface BlogFiltersProps {
   posts: Post[]
   allTags: string[]
-  searchParams: Promise<{ search?: string; tag?: string }>
 }
 
-export default function BlogFilters({ posts, allTags, searchParams: initialSearchParams }: BlogFiltersProps) {
+export default function BlogFilters({ posts, allTags }: BlogFiltersProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
   // Initialize from URL params
   useEffect(() => {
-    const loadParams = async () => {
-      const params = await initialSearchParams
-      setSearchQuery(params.search || '')
-      setSelectedTag(params.tag || null)
-      setIsLoading(false)
-    }
-    loadParams()
-  }, [initialSearchParams])
+    const search = searchParams.get('search') || ''
+    const tag = searchParams.get('tag') || null
+    setSearchQuery(search)
+    setSelectedTag(tag)
+  }, [searchParams])
 
   // Update URL when filters change
   const updateURL = (search: string, tag: string | null) => {
@@ -63,21 +59,6 @@ export default function BlogFilters({ posts, allTags, searchParams: initialSearc
       return matchesSearch && matchesTag
     })
   }, [posts, searchQuery, selectedTag])
-
-  if (isLoading) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="animate-pulse">
-          <div className="h-10 bg-gray-800 rounded-lg mb-4"></div>
-          <div className="space-y-8">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-40 bg-gray-800 rounded-xl"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <>
