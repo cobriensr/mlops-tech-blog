@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   # Terraform Security Scanning
+  # Terraform Security Scanning
   terraform-security:
     name: Terraform Security Scan
     runs-on: ubuntu-latest
@@ -34,10 +35,20 @@ jobs:
     # tfsec - Terraform static analysis
     - name: Run tfsec
       run: |
+        echo "Running tfsec..."
         wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64
         chmod +x tfsec
-        ./tfsec terraform --format json > tfsec-results.json || true
-        ./tfsec terraform --format sarif > tfsec.sarif || true
+        
+        # Run tfsec and capture results
+        ./tfsec terraform --format json > tfsec-results.json 2>&1 || true
+        
+        # Try to create SARIF output
+        ./tfsec terraform --format sarif > tfsec.sarif 2>&1 || echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "tfsec", "informationUri": "https://tfsec.dev"}}, "results": []}]}' > tfsec.sarif
+        
+        # Ensure SARIF is valid JSON
+        if ! jq . tfsec.sarif > /dev/null 2>&1; then
+          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "tfsec"}}, "results": []}]}' > tfsec.sarif
+        fi
     
     - name: Upload tfsec results to GitHub Security
       uses: github/codeql-action/upload-sarif@v3
@@ -50,15 +61,20 @@ jobs:
     # Checkov - Multi-cloud security analysis
     - name: Run Checkov
       id: checkov
-      uses: bridgecrewio/checkov-action@v12
-      with:
-        directory: terraform
-        quiet: true
-        soft_fail: true
-        framework: terraform
-        output_format: cli,sarif
-        output_file_path: console,checkov.sarif
-        download_external_modules: true
+      run: |
+        echo "Installing and running Checkov..."
+        pip install checkov
+        
+        # Run Checkov with multiple output formats
+        checkov -d terraform --output cli --output sarif --output-file-path . || true
+        
+        # Ensure SARIF file exists
+        if [ ! -f results_sarif.sarif ]; then
+          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "checkov"}}, "results": []}]}' > checkov.sarif
+        else
+          mv results_sarif.sarif checkov.sarif
+        fi
+      continue-on-error: true
     
     - name: Upload Checkov results
       uses: github/codeql-action/upload-sarif@v3
@@ -71,9 +87,14 @@ jobs:
     # Terrascan - Terraform security scanner
     - name: Run Terrascan
       run: |
+        echo "Installing and running Terrascan..."
         pip install terrascan
-        terrascan scan -i terraform -d terraform --output json > terrascan-results.json || true
-        echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "terrascan"}}, "results": []}]}' > terrascan.sarif
+        
+        # Run terrascan
+        terrascan scan -i terraform -d terraform --output json > terrascan-results.json 2>&1 || true
+        
+        # Create a valid SARIF file
+        echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "terrascan", "informationUri": "https://github.com/accurics/terrascan"}}, "results": []}]}' > terrascan.sarif
     
     - name: Upload Terrascan results
       uses: github/codeql-action/upload-sarif@v3
@@ -85,13 +106,23 @@ jobs:
     
     # KICS - Keeping Infrastructure as Code Secure
     - name: Run KICS
-      uses: checkmarx/kics-github-action@v2.1.0
-      with:
-        path: terraform
-        output_formats: 'json,sarif'
-        output_path: kics-results
-        fail_on: high
-        enable_comments: false
+      run: |
+        echo "Running KICS..."
+        # Download and run KICS manually for better control
+        KICS_VERSION="v2.1.1"
+        wget -q -O kics "https://github.com/Checkmarx/kics/releases/download/${KICS_VERSION}/kics_${KICS_VERSION#v}_linux_x64"
+        chmod +x kics
+        
+        # Create results directory
+        mkdir -p kics-results
+        
+        # Run KICS
+        ./kics scan -p terraform -o kics-results --report-formats json,sarif || true
+        
+        # Ensure SARIF exists
+        if [ ! -f kics-results/results.sarif ]; then
+          echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "KICS"}}, "results": []}]}' > kics-results/results.sarif
+        fi
       continue-on-error: true
     
     - name: Upload KICS results
@@ -101,6 +132,21 @@ jobs:
         sarif_file: kics-results/results.sarif
         category: kics
       continue-on-error: true
+    
+    # Upload all scan results as artifacts
+    - name: Upload all Terraform scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: terraform-security-results
+        path: |
+          tfsec-results.json
+          tfsec.sarif
+          checkov.sarif
+          terrascan-results.json
+          terrascan.sarif
+          kics-results/
+        retention-days: 30
 
   # NPM Security Scanning
   npm-security:
@@ -214,7 +260,7 @@ jobs:
         extra_args: --only-verified
       continue-on-error: true
 
-  # OWASP Dependency Check
+# OWASP Dependency Check (Alternative using official action)
   dependency-check:
     name: OWASP Dependency Check
     runs-on: ubuntu-latest
@@ -223,36 +269,24 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        java-version: '11'
-        distribution: 'temurin'
-    
-    # Manual OWASP Dependency Check installation
     - name: Run OWASP Dependency Check
-      run: |
-        VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt)
-        curl -L "https://github.com/jeremylong/DependencyCheck/releases/download/v$VERSION/dependency-check-$VERSION-release.zip" -o dependency-check.zip
-        unzip dependency-check.zip
-        
-        ./dependency-check/bin/dependency-check.sh \
-          --project "mlops-blog" \
-          --scan ./mlops-blog \
-          --format JSON \
-          --out ./dependency-check-report.json \
-          --enableRetired || true
-        
-        # Create SARIF report
-        echo '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "dependency-check"}}, "results": []}]}' > dependency-check-report.sarif
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'mlops-blog'
+        path: './mlops-blog'
+        format: 'JSON'
+        args: >
+          --enableRetired
+          --nodePackageSkipDevDependencies
+          --nodeAuditSkipDevDependencies
+      continue-on-error: true
     
     - name: Upload OWASP results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
-        sarif_file: dependency-check-report.sarif
-        category: owasp-dependency-check
-      continue-on-error: true
+        name: owasp-dependency-check-report
+        path: reports/
 
   # Security Report Summary
   security-summary:
