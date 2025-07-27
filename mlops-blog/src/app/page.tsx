@@ -26,14 +26,14 @@ export default function Home() {
             </div>
 
             {/* Heading */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight">
-              Master <span className="gradient-text">Production ML</span>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-tight">
+              Master <span className="gradient-text inline-block">Production MLOps</span>
               <br />
               Engineering
             </h1>
 
             {/* Subheading */}
-            <p className="max-w-2xl mx-auto text-xl text-gray-400">
+            <p className="max-w-2xl mx-auto text-xl sm:text-2xl text-gray-300 leading-relaxed">
               Learn to build, deploy, and scale machine learning systems in production. 
               From MLOps fundamentals to advanced LLMOps practices.
             </p>
