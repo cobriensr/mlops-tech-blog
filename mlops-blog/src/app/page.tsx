@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
 
-export default function Home() {
+export default async function Home() {
   const recentPosts = getAllPosts().slice(0, 3)
   const featuredPost = recentPosts[0] // Assuming first post is featured
 
@@ -13,7 +13,7 @@ export default function Home() {
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:50px_50px]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
+        
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
           <div className="text-center space-y-8 animate-in">
             {/* Badge */}
@@ -89,7 +89,7 @@ export default function Home() {
                 View all →
               </Link>
             </div>
-
+            
             <Link href={`/blog/${featuredPost.slug}`} className="block group">
               <article className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 p-8 hover:shadow-2xl transition-all duration-300 card-hover gradient-border">
                 <div className="relative z-10">
@@ -105,15 +105,15 @@ export default function Home() {
                       })}
                     </time>
                   </div>
-
+                  
                   <h3 className="text-2xl font-bold mb-3 group-hover:text-blue-400 transition-colors">
                     {featuredPost.title}
                   </h3>
-
+                  
                   <p className="text-gray-400 line-clamp-2 mb-4">
                     {featuredPost.excerpt}
                   </p>
-
+                  
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2">
                       {featuredPost.tags.slice(0, 3).map((tag) => (
@@ -125,7 +125,7 @@ export default function Home() {
                     <span className="text-sm text-gray-400">{featuredPost.readingTime}</span>
                   </div>
                 </div>
-
+                
                 {/* Gradient overlay */}
                 <div className="absolute top-0 right-0 w-1/2 h-full opacity-10">
                   <div className="absolute inset-0 bg-gradient-to-l from-blue-500 to-transparent" />
@@ -141,7 +141,7 @@ export default function Home() {
         <section className="py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold mb-8">Recent Posts</h2>
-
+            
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentPosts.slice(1).map((post) => (
                 <Link key={post.slug} href={`/blog/${post.slug}`} className="block group">
@@ -154,15 +154,15 @@ export default function Home() {
                           year: 'numeric' 
                         })}
                       </time>
-
+                      
                       <h3 className="text-xl font-semibold mb-3 group-hover:text-blue-400 transition-colors line-clamp-2">
                         {post.title}
                       </h3>
-
+                      
                       <p className="text-gray-400 line-clamp-3 mb-4 flex-grow">
                         {post.excerpt}
                       </p>
-
+                      
                       <div className="flex items-center justify-between mt-auto">
                         <span className="text-sm text-gray-500">{post.readingTime}</span>
                         <span className="text-blue-400 group-hover:translate-x-1 transition-transform">
@@ -182,7 +182,7 @@ export default function Home() {
       <section className="py-16 bg-gray-900/30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold mb-8 text-center">Explore Topics</h2>
-
+          
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { name: 'MLOps Fundamentals', icon: '🚀', count: 15 },
