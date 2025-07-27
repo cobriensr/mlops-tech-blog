@@ -28,8 +28,7 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            # IMPORTANT: Replace YOUR_GITHUB_USERNAME with your actual GitHub username
-            "token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_USERNAME/buildmlops:*"
+            "token.actions.githubusercontent.com:sub" = "repo:cobriensr/mlops-tech-blog:*"
           }
         }
       }
