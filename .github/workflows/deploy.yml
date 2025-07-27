@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'mlops-blog/**'  # Only trigger on changes to blog
+  workflow_dispatch:  # allows manual trigger from GitHub UI
 
 # Add these permissions for OIDC
 permissions:
