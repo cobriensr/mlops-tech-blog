@@ -85,7 +85,7 @@ jobs:
     
     # KICS - Keeping Infrastructure as Code Secure
     - name: Run KICS
-      uses: checkmarx/kics-github-action@v2.1.0
+      uses: checkmarx/kics-github-action@v2.1.11
       with:
         path: terraform
         output_formats: 'json,sarif'
