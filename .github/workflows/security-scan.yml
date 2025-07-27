@@ -123,7 +123,7 @@ jobs:
     
     # OSV Scanner (Google's vulnerability scanner)
     - name: Run OSV Scanner
-      uses: google/osv-scanner-action@v1.8.4
+      uses: google/osv-scanner-action@v2.1.0
       with:
         scan-args: |-
           --lockfile=mlops-blog/package-lock.json
