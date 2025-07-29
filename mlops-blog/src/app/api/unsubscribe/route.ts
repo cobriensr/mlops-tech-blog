@@ -1,12 +1,10 @@
-import { NextApiRequest, NextApiResponse } from "next";
+// src/app/api/unsubscribe/route.ts
+import { NextRequest, NextResponse } from 'next/server'
 
-// pages/api/unsubscribe.js
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json()
+    
     const response = await fetch(
       `${process.env.LAMBDA_API_URL}/api/unsubscribe`,
       {
@@ -14,14 +12,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(req.body)
+        body: JSON.stringify(body)
       }
-    );
-
-    const data = await response.json();
-    res.status(response.status).json(data);
+    )
+    
+    const data = await response.json()
+    
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Unsubscribe proxy error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Unsubscribe proxy error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
