@@ -1,12 +1,20 @@
 # terraform/variables.tf
-variable "aws_region" {
-  description = "AWS region for S3 bucket"
-  default     = "us-east-1"
+
+variable "environment" {
+  description = "Environment for the resources (e.g., dev, staging, prod)"
+  type        = string
+  default     = "prod"
 }
 
 variable "domain_name" {
   description = "Your domain name (e.g., myblog.com)"
   type        = string
+}
+
+variable "redirect_domain_name" {
+  description = "Domain name for redirects (e.g., www.myblog.com)"
+  type        = string
+  default     = ""
 }
 
 variable "create_hosted_zone" {
@@ -15,14 +23,70 @@ variable "create_hosted_zone" {
   type        = bool
 }
 
-variable "redirect_domain_name" {
-  description = "Domain that redirects to primary domain"
-  type        = string
-  default     = ""
-}
-
 variable "github_repository" {
   description = "GitHub repository in format 'username/repo'"
   type        = string
   default     = "cobriensr/mlops-tech-blog"
+}
+
+variable "aws_region" {
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch operational alerts"
+  type        = string
+  # Example: ops@buildmlops.com
+}
+
+variable "security_alert_email" {
+  description = "Email address for security alerts"
+  type        = string
+  default     = ""
+  # If not set, will use alert_email
+}
+
+variable "publish_api_key" {
+  description = "API key for publishing newsletters"
+  type        = string
+  sensitive   = true
+  # Generate with: openssl rand -hex 32
+}
+
+variable "lambda_timeout" {
+  description = "Timeout for Lambda functions in seconds"
+  type        = number
+  default     = 30
+}
+
+variable "lambda_memory" {
+  description = "Memory for Lambda functions in MB"
+  type        = number
+  default     = 256
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days"
+  type        = number
+  default     = 30
+}
+
+variable "cloudtrail_retention_days" {
+  description = "CloudTrail log retention in days"
+  type        = number
+  default     = 365
+}
+
+variable "unsubscribe_salt" {
+  description = "Salt for generating unsubscribe tokens"
+  type        = string
+  sensitive   = true
+}
+
+variable "stats_api_key" {
+  description = "API key for accessing stats endpoint"
+  type        = string
+  sensitive   = true
 }

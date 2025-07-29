@@ -12,63 +12,10 @@ resource "aws_acm_certificate" "cert" {
   }
 }
 
-# Route53 Hosted Zone for main domain
-resource "aws_route53_zone" "main" {
-  name = var.domain_name
-}
-
-# Separate hosted zone for redirect domain
-resource "aws_route53_zone" "redirect" {
-  name = var.redirect_domain_name
-}
-
-# DNS validation for ACM
-resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.cert.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  }
-
-  allow_overwrite = true
-  name            = each.value.name
-  records         = [each.value.record]
-  ttl             = 60
-  type            = each.value.type
-  zone_id         = aws_route53_zone.main.zone_id
-}
-
 resource "aws_acm_certificate_validation" "cert" {
   provider                = aws.us_east_1
   certificate_arn         = aws_acm_certificate.cert.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
-}
-
-# Route53 records
-resource "aws_route53_record" "www" {
-  zone_id = aws_route53_zone.main.zone_id
-  name    = var.domain_name
-  type    = "A"
-
-  alias {
-    name                   = aws_cloudfront_distribution.blog.domain_name
-    zone_id                = aws_cloudfront_distribution.blog.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
-
-resource "aws_route53_record" "www_subdomain" {
-  zone_id = aws_route53_zone.main.zone_id
-  name    = "www.${var.domain_name}"
-  type    = "A"
-
-  alias {
-    name                   = aws_cloudfront_distribution.blog.domain_name
-    zone_id                = aws_cloudfront_distribution.blog.hosted_zone_id
-    evaluate_target_health = false
-  }
 }
 
 # ACM certificate for redirect domain
@@ -83,51 +30,40 @@ resource "aws_acm_certificate" "redirect" {
   }
 }
 
-# DNS validation for redirect cert
-resource "aws_route53_record" "redirect_cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.redirect.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  }
-
-  allow_overwrite = true
-  name            = each.value.name
-  records         = [each.value.record]
-  ttl             = 60
-  type            = each.value.type
-  zone_id         = aws_route53_zone.redirect.zone_id
-}
-
 resource "aws_acm_certificate_validation" "redirect" {
   provider                = aws.us_east_1
   certificate_arn         = aws_acm_certificate.redirect.arn
   validation_record_fqdns = [for record in aws_route53_record.redirect_cert_validation : record.fqdn]
 }
 
-# Route53 records for redirect domain
-resource "aws_route53_record" "redirect" {
-  zone_id = aws_route53_zone.redirect.zone_id
-  name    = var.redirect_domain_name
-  type    = "A"
+# Config Recorder prerequisites
+resource "aws_config_configuration_recorder" "main" {
+  name     = "${replace(var.domain_name, ".", "-")}-recorder"
+  role_arn = aws_iam_role.config_role.arn
 
-  alias {
-    name                   = aws_cloudfront_distribution.redirect.domain_name
-    zone_id                = aws_cloudfront_distribution.redirect.hosted_zone_id
-    evaluate_target_health = false
+  recording_group {
+    all_supported = true
   }
+
+  depends_on = [aws_iam_role_policy_attachment.config_policy]
 }
 
-resource "aws_route53_record" "redirect_www" {
-  zone_id = aws_route53_zone.redirect.zone_id
-  name    = "www.${var.redirect_domain_name}"
-  type    = "A"
+resource "aws_config_delivery_channel" "main" {
+  name           = "${replace(var.domain_name, ".", "-")}-delivery-channel"
+  s3_bucket_name = aws_s3_bucket.cloudtrail_logs.bucket
 
-  alias {
-    name                   = aws_cloudfront_distribution.redirect.domain_name
-    zone_id                = aws_cloudfront_distribution.redirect.hosted_zone_id
-    evaluate_target_health = false
-  }
+  depends_on = [
+    aws_config_configuration_recorder.main,
+    aws_s3_bucket_policy.config_logging
+  ]
+}
+
+resource "aws_config_configuration_recorder_status" "main" {
+  name       = aws_config_configuration_recorder.main.name
+  is_enabled = true
+
+  depends_on = [
+    aws_config_configuration_recorder.main,
+    aws_config_delivery_channel.main
+  ]
 }
