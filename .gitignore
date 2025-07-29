@@ -2,15 +2,33 @@
 
 # dependencies
 /node_modules
+/mlops-blog/node_modules
 /.pnp
-.pnp.js
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+/mlops-blog/lambda/publish/node_modules
+/mlops-blog/lambda/subscribe/node_modules
+/mlops-blog/lambda/unsubscribe/node_modules
+.zip
+/.zip
+mlops-blog/lambda/publish/publish.zip
+mlops-blog/lambda/subscribe/subscribe.zip
+mlops-blog/lambda/unsubscribe/unsubscribe.zip
 
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# Next.js
+.next/
+out/
+.env.local
+
+# Build cache
+.next/cache/
 
 # production
 /build
@@ -23,10 +41,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# local env files
-.env*.local
-.env
+# env files (can opt-in for committing if needed)
+.env*
 
 # vercel
 .vercel
@@ -34,3 +52,27 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+.tfbackend
+
+# Variable files with secrets
+*.auto.tfvars
+terraform.tfvars
+
+# Backup files
+*.backup
+*.bak
+
+# Output files
+outputs.json
+
+# log files
+*.log
+
+# vscode files
+.vscode/
