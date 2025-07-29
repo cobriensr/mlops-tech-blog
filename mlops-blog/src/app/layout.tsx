@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import Link from "next/link"
 import "./globals.css"
+import NewsletterForm from '@/components/NewsLetterForm'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -152,19 +153,7 @@ export default function RootLayout({
                 <p className="text-gray-400 text-sm">
                   Get the latest MLOps insights delivered to your inbox.
                 </p>
-                <form className="space-y-2">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-sm"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity text-sm"
-                  >
-                    Subscribe
-                  </button>
-                </form>
+                <NewsletterForm showName={true} />
               </div>
             </div>
 

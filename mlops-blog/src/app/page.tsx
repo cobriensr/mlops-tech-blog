@@ -1,6 +1,7 @@
 // src/app/page.tsx
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
+import NewsletterForm from '@/components/NewsLetterForm'
 
 export default function Home() {
   const recentPosts = getAllPosts().slice(0, 3)
@@ -212,29 +213,7 @@ export default function Home() {
       </section>
 
       {/* Newsletter CTA */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Stay ahead in MLOps
-          </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Get weekly insights on production ML engineering delivered to your inbox.
-          </p>
-          <form className="max-w-md mx-auto flex gap-4">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 bg-white/20 backdrop-blur border border-white/30 rounded-lg text-white placeholder-white/70 focus:outline-none focus:border-white"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Subscribe
-            </button>
-          </form>
-        </div>
-      </section>
+      <NewsletterForm variant="inline" />
     </div>
   )
 }
