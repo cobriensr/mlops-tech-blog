@@ -26,7 +26,6 @@ variable "create_hosted_zone" {
 variable "github_repository" {
   description = "GitHub repository in format 'username/repo'"
   type        = string
-  default     = "cobriensr/mlops-tech-blog"
 }
 
 variable "aws_region" {
@@ -38,21 +37,17 @@ variable "aws_region" {
 variable "alert_email" {
   description = "Email address for CloudWatch operational alerts"
   type        = string
-  # Example: ops@buildmlops.com
 }
 
 variable "security_alert_email" {
   description = "Email address for security alerts"
   type        = string
-  default     = ""
-  # If not set, will use alert_email
 }
 
 variable "publish_api_key" {
   description = "API key for publishing newsletters"
   type        = string
   sensitive   = true
-  # Generate with: openssl rand -hex 32
 }
 
 variable "lambda_timeout" {
