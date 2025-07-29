@@ -14,16 +14,24 @@ export default function NewsletterForm({ variant = 'default', showName = false }
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
+  const SUBSCRIBE_ENDPOINT = process.env.NEXT_PUBLIC_SUBSCRIBE_ENDPOINT
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!email) return
+
+    if (!SUBSCRIBE_ENDPOINT) {
+      setStatus('error')
+      setMessage('Subscription endpoint is not configured.')
+      return
+    }
     
     setStatus('loading')
     setMessage('')
     
     try {
-      const response = await fetch('https://7ygb1encfc.execute-api.us-east-1.amazonaws.com/prod/subscribe', {
+      const response = await fetch(SUBSCRIBE_ENDPOINT as string, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

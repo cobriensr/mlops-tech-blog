@@ -9,12 +9,17 @@ export default function NewsletterPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
-  // Replace with your Lambda endpoint after terraform apply
-  const SUBSCRIBE_ENDPOINT = process.env.NEXT_PUBLIC_SUBSCRIBE_ENDPOINT || 'https://your-api.execute-api.us-east-1.amazonaws.com/prod/subscribe'
+  const SUBSCRIBE_ENDPOINT = process.env.NEXT_PUBLIC_SUBSCRIBE_ENDPOINT
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
+
+    if (!SUBSCRIBE_ENDPOINT) {
+      setStatus('error')
+      setMessage('Subscription endpoint is not configured.')
+      return
+    }
 
     try {
       const response = await fetch(SUBSCRIBE_ENDPOINT, {

@@ -12,6 +12,8 @@ export default function UnsubscribeSuccessPage() {
   const [resubscribed, setResubscribed] = useState(false)
   const [error, setError] = useState('')
 
+  const SUBSCRIBE_ENDPOINT = process.env.NEXT_PUBLIC_SUBSCRIBE_ENDPOINT
+
   const handleResubscribe = async () => {
     if (!email) return
     
@@ -19,7 +21,12 @@ export default function UnsubscribeSuccessPage() {
     setError('')
     
     try {
-      const response = await fetch('https://7ygb1encfc.execute-api.us-east-1.amazonaws.com/prod/api/resubscribe', {
+      if (!SUBSCRIBE_ENDPOINT) {
+        setError('Subscribe endpoint is not configured.')
+        setResubscribing(false)
+        return
+      }
+      const response = await fetch(SUBSCRIBE_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

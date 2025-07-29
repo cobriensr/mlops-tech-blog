@@ -24,9 +24,16 @@ export default function UnsubscribePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const SUBSCRIBE_ENDPOINT = process.env.NEXT_PUBLIC_SUBSCRIBE_ENDPOINT
+
   const handleUnsubscribe = async (skipFeedback = false) => {
     if (!email || !token) {
       setError('Invalid unsubscribe link')
+      return
+    }
+
+    if (!SUBSCRIBE_ENDPOINT) {
+      setError('Unsubscribe endpoint is not configured.')
       return
     }
 
@@ -34,7 +41,7 @@ export default function UnsubscribePage() {
     setError('')
 
     try {
-      const response = await fetch('https://7ygb1encfc.execute-api.us-east-1.amazonaws.com/prod/api/unsubscribe', {
+      const response = await fetch(SUBSCRIBE_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
